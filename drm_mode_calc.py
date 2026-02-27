@@ -3,7 +3,7 @@ import subprocess
 import sys
 import argparse
 
-def generate_drm_mode(width, height, refresh, reduced_blanking=False):
+def generate_drm_mode(width, height, refresh, reduced_blanking=False, align16=False):
     # Prepare the cvt command
     cmd = ['cvt', str(width), str(height), str(refresh)]
     if reduced_blanking:
@@ -46,6 +46,19 @@ def generate_drm_mode(width, height, refresh, reduced_blanking=False):
     vsync_end = int(parts[9])
     vtotal = int(parts[10])
     
+    # --- The Fix: Force Multiple of 16 Alignment ---
+    if align16:
+        # Round each horizontal parameter up to the nearest multiple of 16
+        hdisplay = (hdisplay + 15) // 16 * 16
+        hsync_start = (hsync_start + 15) // 16 * 16
+        hsync_end = (hsync_end + 15) // 16 * 16
+        htotal = (htotal + 15) // 16 * 16
+        
+        # Failsafe: Ensure timings still increase sequentially after rounding
+        if hsync_start <= hdisplay: hsync_start = hdisplay + 16
+        if hsync_end <= hsync_start: hsync_end = hsync_start + 16
+        if htotal <= hsync_end: htotal = hsync_end + 16
+
     # Parse sync flags
     flags_str = parts[11:]
     drm_flags = []
@@ -69,8 +82,12 @@ def generate_drm_mode(width, height, refresh, reduced_blanking=False):
     # Standard CVT outputs a slightly rounded pixel clock which fails strict checks. 
     # DRM calculates the target refresh rate exactly based on the blanking totals. 
     # We reverse-engineer the perfect clock to match the requested integer refresh rate.
+    # exact_pclk_hz = htotal * vtotal * refresh
+    # pclk_khz = int(exact_pclk_hz / 1000)
+    # pclk_mhz = exact_pclk_hz / 1000000.0
+    # Uses round() to perfectly mimic the kernel's DIV_ROUND_CLOSEST macro
     exact_pclk_hz = htotal * vtotal * refresh
-    pclk_khz = int(exact_pclk_hz / 1000)
+    pclk_khz = int(round(exact_pclk_hz / 1000.0))
     pclk_mhz = exact_pclk_hz / 1000000.0
 
     # Format the C macro
@@ -82,6 +99,9 @@ def generate_drm_mode(width, height, refresh, reduced_blanking=False):
 
     print("--- 1. Original CVT Output ---")
     print(result.stdout.strip())
+    
+    if align16:
+        print("\n--- [ NXP / DMA 16-Pixel Alignment Applied ] ---")
     
     print("\n--- 2. Corrected DRM_MODE Entry ---")
     print(macro)
@@ -95,6 +115,7 @@ if __name__ == "__main__":
     parser.add_argument("height", type=int, help="Resolution height")
     parser.add_argument("refresh", type=int, help="Refresh rate (e.g. 60)")
     parser.add_argument("-r", "--reduced", action="store_true", help="Use reduced blanking")
+    parser.add_argument("-a", "--align16", action="store_true", help="Force horizontal timings to multiples of 16 for strict hardware DMA alignment")
     
     args = parser.parse_args()
-    generate_drm_mode(args.width, args.height, args.refresh, args.reduced)
+    generate_drm_mode(args.width, args.height, args.refresh, args.reduced, args.align16)
