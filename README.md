@@ -47,28 +47,30 @@ Modeline "1920x540R"   69.25  1920 1968 2000 2080  540 543 553 559 +hsync -vsync
 ```
 ### But my screen actually wants 69.76 according to debug, so I will add both as a fallback.
 ```
-python imx8_hdmi_pll_calc.py 69.763
+python better_pll_calc.py 69.763
 --- i.MX8MP Samsung HDMI PHY PLL Calculator ---
+{'Target_PixClk': 69763000, 'VCO': 2092890000, 'M': 87, 'S': 6}
 
 Target Pixel Clock : 69.763 MHz
-Calculated C Array : { 0x57, 0x58, 0xb6, 0x0b, 0x80, 0x40 }
+Calculated C Array : { 0x57, 0x52, 0xb6, 0x0b, 0x90, 0x49 }
 
 Kernel Struct Entry:
-	{
-		.pixclk = 69763000,
-		.pll_div_regs = { 0x57, 0x58, 0xb6, 0x0b, 0x80, 0x40 },
-	},
+        {
+                .pixclk = 69763000,
+                .pll_div_regs = { 0x57, 0x52, 0xb6, 0x0b, 0x90, 0x49 },
+        },
 ```
 ```
-python imx8_hdmi_pll_calc.py 69.76
+python better_pll_calc.py 69.76
 --- i.MX8MP Samsung HDMI PHY PLL Calculator ---
+{'Target_PixClk': 69760000, 'VCO': 2092800000, 'M': 87, 'S': 6}
 
 Target Pixel Clock : 69.76 MHz
-Calculated C Array : { 0x57, 0x58, 0x85, 0x01, 0x80, 0x40 }
+Calculated C Array : { 0x57, 0x52, 0x85, 0x01, 0x90, 0x49 }
 
 Kernel Struct Entry:
-	{
-		.pixclk = 69760000,
-		.pll_div_regs = { 0x57, 0x58, 0x85, 0x01, 0x80, 0x40 },
-	},
+        {
+                .pixclk = 69760000,
+                .pll_div_regs = { 0x57, 0x52, 0x85, 0x01, 0x90, 0x49 },
+        },
 ```
